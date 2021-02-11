@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <style>
+        body {
+            font-family: Verdana, Geneva, Tahoma, sans-serif;
+        }
+
+        h3 {
+            text-align: center;
+        }
+
+        #mycanvas {
+            display: block;
+            border: solid black 0px;
+            border-radius: 10px;
+            box-shadow: 1px 1px 10px 1px rgb(214, 214, 214);
+            margin: auto;
+        }
+
+        .controls {
+            text-align: center;
+            margin: 20px;
+        }
+
+        .controls .record{
+            font-family: monospace;
+        }
+
+        .controls button {
+            margin: auto 2px;
+            box-shadow: 1px 1px 10px 1px rgb(214, 214, 214);
+        }
+        .media{
+            text-align: center;
+            width:90%;
+            margin:auto;
+        }
+
+        .video {
+            border-radius: 10px;
+            box-shadow: 1px 1px 10px 1px rgb(214, 214, 214);
+            margin: 10px;
+            height: 120px;
+            width:180px;
+        }
+
+        .image{
+            border-radius: 10px;
+            box-shadow: 1px 1px 10px 1px rgb(214, 214, 214);
+            margin: 10px;
+            height: 120px;
+        }
+    </style>
+</head>
+
+<body>
+    <h3>Canvas</h3>
+    <canvas id="mycanvas"></canvas>
+    <div class="controls">
+        <span class="record">Stopped!</span>
+        <button onclick="startRecording(event)">Start</button>
+        <button onclick="pauseResumeRecording(event)">Pause</button>
+        <button onclick="stopRecording(event)">Stop</button>
+        <button onclick="snapPhoto(event)">Photo</button>
+        <button onclick="clearCanvas(event)">Clear</button>
+    </div>
+    <div class="media">
+
+    </div>
+
+    <script>
+        const canvas = document.getElementById("mycanvas")
+        const context = canvas.getContext("2d")
+        context.save()
+        context.fillStyle = "white"
+        context.fillRect(0, 0, canvas.width, canvas.height)
+        context.restore()
+
+        canvas.width = window.innerWidth * 0.9
+        canvas.height = window.innerHeight * 0.5
+        var mouseDown = false;
+        canvas.addEventListener("touchstart", (event) => {
+            console.log(event.touches[0])
+            console.log(event.changedTouches[0])
+            mouseDown = true
+            const x = event.touches[0].clientX - canvas.getBoundingClientRect().left
+            const y = event.touches[0].clientY - canvas.getBoundingClientRect().top
+            context.beginPath()
+            context.moveTo(x, y)
+        })
+        canvas.addEventListener("touchmove", (event) => {
+            event.preventDefault()
+            const x = event.touches[0].clientX - canvas.getBoundingClientRect().left
+            const y = event.touches[0].clientY - canvas.getBoundingClientRect().top
+            context.lineWidth = event.touches[0].force * 10
+            context.lineCap = "round"
+            if (mouseDown) {
+                context.lineTo(x, y)
+                context.stroke()
+            }
+
+        })
+        canvas.addEventListener("touchend", (event) => {
+            mouseDown = false
+        })
+        const recorder = new MediaRecorder(canvas.captureStream())
+        var chunks = []
+        var mode = "stopped"
+        var paused = false
+        const record = document.querySelector(".record")
+        const media = document.querySelector(".media")
+
+        function startRecording(event) {
+            if (mode === "stopped") {
+                recorder.start()
+                mode = "recording"
+                record.innerText = "Recording.."
+            }
+        }
+        function pauseResumeRecording(event) {
+            console.log("clicked pauseResumeRecording")
+            if (mode === "recording") {
+                if (paused === false) {
+                    recorder.pause()
+                    paused = true
+                    record.innerText = "Paused"
+                    event.target.innerText = "Resume"
+                } else {
+                    recorder.resume()
+                    paused = false
+                    record.innerText = "Recording.."
+                    event.target.innerText = "Pause"
+                }
+            }
+        }
+        function stopRecording(event) {
+            if (mode === "recording") {
+                recorder.stop()
+                mode = "stopped"
+                record.innerText = "Stopped!"
+            }
+        }
+
+        recorder.ondataavailable = event => {
+            chunks.push(event.data)
+        }
+
+        recorder.onstop = event => {
+            const blob = new Blob(chunks, { type: "video/mp4" })
+            const url = URL.createObjectURL(blob)
+            const video = document.createElement("video")
+            video.src = url
+            video.controls = true
+            video.className = "video"
+            
+            media.appendChild(video)
+            chunks = []
+            //URL.revokeObjectURL(url)
+        }
+
+        function clearCanvas(event) {
+            context.clearRect(0, 0, canvas.width, canvas.height)
+            context.save()
+            context.fillStyle = "white"
+            context.fillRect(0, 0, canvas.width, canvas.height)
+            context.restore()
+        }
+
+        function snapPhoto(event){
+            const url = canvas.toDataURL({type:"image/png"})
+            const image = document.createElement("img")
+            image.src = url
+            image.className = "image"
+            media.appendChild(image)
+        }
+    </script>
+</body>
+
+</html>
